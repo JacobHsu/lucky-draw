@@ -7,11 +7,11 @@
     <title>抽獎程式</title>
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.11/lodash.min.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="list-complete-demo" class="demo">
-      <button v-on:click="start">start</button>
+      <button v-on:click="start" :disabled="arrList.length ===1">start</button>
       <button v-on:click="end">end</button>
       <div class="draw-list">
         <span v-for="item in target"> {{ item }} </span>
@@ -21,6 +21,7 @@
           v-for="item in arrList"
           v-bind:key="item"
           class="list-complete-item"
+          :class="{'draw-bg': item == winner, 'draw-scale': status && item == winner}"
         >
           {{ item }}
         </span>
@@ -42,12 +43,13 @@
             "鄭十"
           ],
           target: [], //中獎名單
-          index: -1, 
-          timer: null, 
-          winner: "", 
+          index: -1,
+          timer: null,
+          winner: "",
           status: true //當前抽獎狀態
         },
         mounted() {
+          // 抽中人員和沒抽中人員分兩個數組存入localStorage，防止抽獎過程中刷新頁面，純靜態存本地
           if (!localStorage.getItem("initData")) {
             localStorage.setItem("initData", JSON.stringify(this.arrList));
           } else {
@@ -59,20 +61,44 @@
         },
         methods: {
           start() {
-            if (this.index != -1) {
+            if(this.arrList.length === 2) {
               this.arrList.splice(this.index, 1);
-              localStorage.setItem("initData", JSON.stringify(this.arrList));
+              return;
             }
-            this.shuffle();
-            this.status = !this.status;
+            if (this.status) {
+              if (this.index != -1) {
+                //console.log(this.index,'上位中獎id', this.arrList[this.index]);
+                this.arrList.splice(this.index, 1); // 移除已中獎
+                localStorage.setItem("initData", JSON.stringify(this.arrList));
+              }
+              this.shuffle();
+              setTimeout(() => {
+                this.recursive();
+              }, 800);
+              this.status = !this.status;
+            }
           },
           shuffle: function() {
-              this.arrList = _.shuffle(this.arrList);
+            this.arrList = _.shuffle(this.arrList);
+          },
+          randomIndex: function() {
+            this.index = Math.floor(Math.random() * this.arrList.length);
+            return this.index;
+          },
+          recursive() {
+            clearTimeout(this.timer);
+            this.timer = setTimeout(() => {
+              this.winner = this.arrList[this.randomIndex()];
+              console.log(this.winner);
+              this.recursive();
+            }, 200);
           },
           end() {
             if (this.status) {
               return;
             }
+            clearTimeout(this.timer);
+            this.index = this.randomIndex();
             this.winner = this.arrList[this.index];
             this.target.push(this.winner);
             localStorage.setItem("drawList", JSON.stringify(this.target));
